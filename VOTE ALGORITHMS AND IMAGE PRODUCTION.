@@ -1,0 +1,107 @@
+import concurrent.futures
+import matplotlib.pyplot as plt
+import numpy as np
+import math as mt
+
+#def distance:
+def dis(A,B):
+    return mt.sqrt((A[0]-B[0])**(2)+(A[1]-B[1])**(2))
+
+#Classement pref 1 voteur:
+def pref1(voteur,candidats):
+    T=np.zeros((len(candidats),2))
+    for i in range(len(candidats)):
+        T[i]=(dis(voteur,candidats[i]),i)
+    T=T[T[:,0].argsort()]
+    return T
+#Classement pref tt les voteurs:
+def preftt(voteurs,candidats):
+    T=np.zeros((len(voteurs),len(candidats)))
+    for i in range(len(voteurs)):
+        T[i]=pref1(voteurs[i],candidats)[:,1]
+    return T
+#nbr de premiere pref
+def nbv1(voteurs,candidats):
+    V=[]
+    P=preftt(voteurs,candidats)
+    for i in range(len(candidats)):
+        c=0
+        for j in range(len(voteurs)):
+            if int(P[j][0])==i:
+                c=c+1
+        V.append(c)
+    return V
+#Plur
+def plur(voteurs,candidats):
+    A=nbv1(voteurs,candidats)
+    return A.index(max(A))
+#VASTI
+def irv(voteurs,candidats):
+    cand=np.copy(candidats)
+    candn=[]
+    for i in range(len(cand)):
+        candn.append((cand[i],i))
+    V=nbv1(voteurs,cand)
+    vm=max(V)
+    p=vm/(len(voteurs))
+    while p<0.5 :
+        i=V.index(min(V))
+        print(i)
+        cand=np.delete(cand,i,0)
+        candn.pop(i)
+        V=nbv1(voteurs,cand)
+        vm=max(V)
+        p=vm/(len(voteurs))
+    return candn[plur(voteurs,cand)][1]
+#Cercle d'approbation 1 voteur:
+def votecircle1(voteur,candidats,r):
+    L=np.zeros(len(candidats))
+    for i in range(len(candidats)):
+        if dis(voteur,candidats[i])<=r:
+            L[i]=1
+    return L
+#Cercle d'approbation 1 voteur:
+def votecirclett(voteurs,candidats,r):
+    T=np.zeros((len(voteurs),len(candidats)))
+    for i in range(len(voteurs)):
+        T[i]=votecircle1(voteurs[i],candidats,r[i])
+    return T
+#nbr de vote
+def nbvc(voteurs,candidats,r):
+    V=[]
+    P=votecirclett(voteurs,candidats,r)
+    for i in range(len(candidats)):
+        c=0
+        for j in range(len(P)):
+            c=c+(int(P[j][i]))
+        V.append(c)
+    return V
+#approbation:
+def appr(voteurs,candidats,r):
+    A=nbvc(voteurs,candidats,r)
+    return A.index(max(A))
+#simulation:
+d= np.mgrid[-0.25:1.25:250j, -0.25:1.25:250j].reshape(2,-1).T
+candidats1=np.array([[0.5,0.99],[0.07,0.25],[0.93,0.25]])
+candidats2=np.array([[0.93,0.49],[0.79,0.42],[0.27,0.45]])
+candidats3=np.array([[0.07,0.17],[0.49,0.01],[0.41,0.02]])
+candidats4=np.array([[0.54,0.47],[0.77,0.64],[0.13,0.10]])
+L=[candidats1,candidats2,candidats3,candidats4]
+C=['#ff0000','#0000ff','#00ff00']
+
+def color(c):
+    #pour appr : r=np.random.lognormal(-0.5,0.5,10000)
+    voters=np.random.multivariate_normal(c,[[0.25,0],[0,0.25]],10000)
+    return C[irv(voters,L[3])]
+d1=d.tolist()
+X,Y=d.T
+x,y=L[3].T
+#utilisation de plusieurs coeurs par subdivision du calcul des couleurs de 
+#chaque point
+if __name__ == '__main__': 
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        r=executor.map(color,d1)
+        C1=list(r)
+        plt.scatter(X,Y,c=C1)
+        plt.scatter(x,y,s=200,c=C,marker="P",edgecolors='black')
+        plt.show()
